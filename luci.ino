@@ -27,15 +27,15 @@ unsigned long LastTimeDebounce = 0;
 int LastRead = LOW;
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID       "NETGEAR06"
-#define WLAN_PASS       "shinyowl309"
+#define WLAN_SSID       "your-ssid"
+#define WLAN_PASS       "your-password"
 
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883                   // use 8883 for SSL
-#define AIO_USERNAME    "TheVezz"
-#define AIO_KEY         "419903b2fabe451d9fb8e294dc99a49a"
+#define AIO_USERNAME    "your-username"
+#define AIO_KEY         "your-key"
 
 /************ Global State (you don't need to change this!) ******************/
 
