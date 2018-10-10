@@ -1,19 +1,4 @@
-/***************************************************
-  Adafruit MQTT Library ESP8266 Example
 
-  Must use ESP8266 Arduino from:
-    https://github.com/esp8266/Arduino
-
-  Works great with Adafruit's Huzzah ESP board & Feather
-  ----> https://www.adafruit.com/product/2471
-  ----> https://www.adafruit.com/products/2821
-
-  Adafruit invests time and resources providing this open source code,
-  please support Adafruit and open-source hardware by purchasing
-  products from Adafruit!
-
-  Written by Tony DiCola for Adafruit Industries.
-  MIT license, all text above must be included in any redistribution
  ****************************************************/
 #include <ESP8266WiFi.h>
 #include "Adafruit_MQTT.h"
@@ -28,15 +13,15 @@ int LastRead = LOW;
 bool connLost = false;
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID       "NETGEAR06"
-#define WLAN_PASS       "shinyowl309"
+#define WLAN_SSID       "you-ssid"
+#define WLAN_PASS       "you-pasw"
 
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
-#define AIO_SERVERPORT  1884                 // use 8883 for SSL, 1883 default
-#define AIO_USERNAME    "TheVezz"
-#define AIO_KEY         "419903b2fabe451d9fb8e294dc99a49a"
+#define AIO_SERVERPORT  1883                 // use 8883 for SSL, 1883 default
+#define AIO_USERNAME    "you-username"
+#define AIO_KEY         "you-key"
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -49,10 +34,6 @@ WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
 /****************************** Feeds ***************************************/
-
-// Setup a feed called 'photocell' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-//Adafruit_MQTT_Publish photocell = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/photocell");
 
 // Setup a feed called 'onoff' for subscribing to changes.
 Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/sample");
@@ -123,14 +104,14 @@ bool MQTT_connect() {
 
 
 void loop() {
-  // Verifico se non ho perso la connessione
+  // I check if I have not lost the connection
   if (!connLost) {
-    // Ok, verifica la connessione o prova a (ri)connettersi
+    // Ok, check the connection or try to (re)connect
     if (!MQTT_connect()) {
-      // Connessione/riconnessione fallita! Lascio perdere
+      // Connection / reconnection failed! I give up
       connLost = true;
     } else {
-      // La connessione è ok
+      // The connection is ok
       // Google assistant
       Adafruit_MQTT_Subscribe *subscription;
       while ((subscription = mqtt.readSubscription(10))) {
