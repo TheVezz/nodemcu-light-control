@@ -25,17 +25,18 @@ int buttonState = LOW;
 int WaitDebounce = 50;
 unsigned long LastTimeDebounce = 0;
 int LastRead = LOW;
+bool connLost = false;
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID       "your-ssid"
-#define WLAN_PASS       "your-password"
+#define WLAN_SSID       "NETGEAR06"
+#define WLAN_PASS       "shinyowl309"
 
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
-#define AIO_SERVERPORT  1883                   // use 8883 for SSL
-#define AIO_USERNAME    "your-username"
-#define AIO_KEY         "your-key"
+#define AIO_SERVERPORT  1884                 // use 8883 for SSL, 1883 default
+#define AIO_USERNAME    "TheVezz"
+#define AIO_KEY         "419903b2fabe451d9fb8e294dc99a49a"
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -60,7 +61,7 @@ Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAM
 
 // Bug workaround for Arduino 1.6.6, it seems to need a function declaration
 // for some reason (only affects ESP8266, likely an arduino-builder bug).
-void MQTT_connect();
+//bool MQTT_connect();
 
 void setup() {
   Serial.begin(115200);
@@ -93,23 +94,72 @@ void setup() {
 
 //uint32_t x=0;
 
+// Function to connect and reconnect as necessary to the MQTT server.
+// Should be called in the loop function and it will take care if connecting.
+bool MQTT_connect() {
+  int8_t ret;
+
+  // Stop if already connected.
+  if (mqtt.connected()) {
+    return true;
+  }
+
+  Serial.print("Connecting to MQTT... ");
+
+  uint8_t retries = 3;
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+    Serial.println(mqtt.connectErrorString(ret));
+    Serial.println("Retrying MQTT connection in 5 seconds...");
+    mqtt.disconnect();
+    delay(5000);  // wait 5 seconds
+    retries--;
+    if (retries == 0) {
+      return false;
+    }
+  }
+  Serial.println("MQTT Connected!");
+  return true;
+}
+
+
 void loop() {
-  // Ensure the connection to the MQTT server is alive (this will make the first
-  // connection and automatically reconnect when disconnected).  See the MQTT_connect
-  // function definition further below.
-  MQTT_connect();
+  // Verifico se non ho perso la connessione
+  if (!connLost) {
+    // Ok, verifica la connessione o prova a (ri)connettersi
+    if (!MQTT_connect()) {
+      // Connessione/riconnessione fallita! Lascio perdere
+      connLost = true;
+    } else {
+      // La connessione è ok
+      // Google assistant
+      Adafruit_MQTT_Subscribe *subscription;
+      while ((subscription = mqtt.readSubscription(10))) {
+        if (subscription == &onoffbutton) {
+          Serial.print(F("Got: "));
+          Serial.println((char *)onoffbutton.lastread);
+          relayState = atoi((char *)onoffbutton.lastread);
+          digitalWrite(relayPin, relayState);
+        }
+      }
 
-  // this is our 'wait for incoming subscription packets' busy subloop
-  // try to spend your time here
+      //button
+      int reading = digitalRead(buttonPin);
+      if (reading != LastRead) {
+        LastTimeDebounce = millis();
+      }
 
-  //google assistant
-  Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(10))) {
-    if (subscription == &onoffbutton) {
-      Serial.print(F("Got: "));
-      Serial.println((char *)onoffbutton.lastread);
-      relayState = atoi((char *)onoffbutton.lastread);
-      digitalWrite(relayPin, relayState);
+      if ((millis() - LastTimeDebounce) > WaitDebounce) {
+        int reading = digitalRead(buttonPin);
+        if (reading != buttonState and reading == HIGH) {
+          relayState = !relayState;
+          digitalWrite(relayPin, relayState);
+          Serial.print(F("Set: "));
+          Serial.println(relayState);
+        }
+        buttonState = reading;
+      }
+      LastRead = reading;
+      delay(10);
     }
   }
 
@@ -131,51 +181,4 @@ void loop() {
   }
   LastRead = reading;
   delay(10);
-
-  // Now we can publish stuff!
-  /*
-    Serial.print(F("\nSending photocell val "));
-    Serial.print(x);
-    Serial.print("...");
-    if (! photocell.publish(x++)) {
-    Serial.println(F("Failed"));
-    } else {
-    Serial.println(F("OK!"));
-    }
-  */
-
-  // ping the server to keep the mqtt connection alive
-  // NOT required if you are publishing once every KEEPALIVE seconds
-  /*
-    if(! mqtt.ping()) {
-    mqtt.disconnect();
-    }
-  */
-}
-
-// Function to connect and reconnect as necessary to the MQTT server.
-// Should be called in the loop function and it will take care if connecting.
-void MQTT_connect() {
-  int8_t ret;
-
-  // Stop if already connected.
-  if (mqtt.connected()) {
-    return;
-  }
-
-  Serial.print("Connecting to MQTT... ");
-
-  uint8_t retries = 3;
-  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-    Serial.println(mqtt.connectErrorString(ret));
-    Serial.println("Retrying MQTT connection in 5 seconds...");
-    mqtt.disconnect();
-    delay(5000);  // wait 5 seconds
-    retries--;
-    if (retries == 0) {
-      // basically die and wait for WDT to reset me
-      while (1);
-    }
-  }
-  Serial.println("MQTT Connected!");
 }
