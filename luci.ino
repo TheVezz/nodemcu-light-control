@@ -1,20 +1,35 @@
+/***************************************************
+  Adafruit MQTT Library ESP8266 Example
 
+  Must use ESP8266 Arduino from:
+    https://github.com/esp8266/Arduino
+
+  Works great with Adafruit's Huzzah ESP board & Feather
+  ----> https://www.adafruit.com/product/2471
+  ----> https://www.adafruit.com/products/2821
+
+  Adafruit invests time and resources providing this open source code,
+  please support Adafruit and open-source hardware by purchasing
+  products from Adafruit!
+
+  Written by Tony DiCola for Adafruit Industries.
+  MIT license, all text above must be included in any redistribution
  ****************************************************/
 #include <ESP8266WiFi.h>
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
+#include <Chrono.h>
 #define relayPin D0
 #define buttonPin D1
 int relayState = LOW;
-int buttonState = LOW;
-int WaitDebounce = 50;
-unsigned long LastTimeDebounce = 0;
+Chrono myChrono;
+int previousButtonState;
 int LastRead = LOW;
 bool connLost = false;
 /************************* WiFi Access Point *********************************/
 
 #define WLAN_SSID       "you-ssid"
-#define WLAN_PASS       "you-pasw"
+#define WLAN_PASS       "you-password"
 
 /************************* Adafruit.io Setup *********************************/
 
@@ -35,6 +50,10 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 
 /****************************** Feeds ***************************************/
 
+// Setup a feed called 'photocell' for publishing.
+// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
+//Adafruit_MQTT_Publish photocell = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/photocell");
+
 // Setup a feed called 'onoff' for subscribing to changes.
 Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/sample");
 
@@ -49,7 +68,8 @@ void setup() {
   delay(10);
 
   pinMode(relayPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  previousButtonState = digitalRead(buttonPin);
   digitalWrite(relayPin, relayState);
 
   Serial.println(F("Adafruit MQTT demo"));
@@ -104,18 +124,19 @@ bool MQTT_connect() {
 
 
 void loop() {
-  // I check if I have not lost the connection
+  // Verifico se non ho perso la connessione
   if (!connLost) {
-    // Ok, check the connection or try to (re)connect
+    // Ok, verifica la connessione o prova a (ri)connettersi
     if (!MQTT_connect()) {
-      // Connection / reconnection failed! I give up
+      // Connessione/riconnessione fallita! Lascio perdere
       connLost = true;
     } else {
-      // The connection is ok
+      // La connessione è ok
       // Google assistant
       Adafruit_MQTT_Subscribe *subscription;
       while ((subscription = mqtt.readSubscription(10))) {
         if (subscription == &onoffbutton) {
+          Serial.println("******************");
           Serial.print(F("Got: "));
           Serial.println((char *)onoffbutton.lastread);
           relayState = atoi((char *)onoffbutton.lastread);
@@ -124,42 +145,59 @@ void loop() {
       }
 
       //button
-      int reading = digitalRead(buttonPin);
-      if (reading != LastRead) {
-        LastTimeDebounce = millis();
-      }
+      int newButtonState = digitalRead(buttonPin);
+      if ( previousButtonState != newButtonState ) {
+        previousButtonState = newButtonState;
 
-      if ((millis() - LastTimeDebounce) > WaitDebounce) {
-        int reading = digitalRead(buttonPin);
-        if (reading != buttonState and reading == HIGH) {
+        if ( newButtonState == LOW && myChrono.hasPassed(50) ) {
+          Serial.println("******************");
+          Serial.print("ms ");
+          Serial.print( myChrono.elapsed() );
+          Serial.println();
           relayState = !relayState;
           digitalWrite(relayPin, relayState);
           Serial.print(F("Set: "));
           Serial.println(relayState);
+
         }
-        buttonState = reading;
+
+
+        myChrono.restart();
       }
-      LastRead = reading;
-      delay(10);
     }
   }
 
+  //la connessione non è ok
   //button
-  int reading = digitalRead(buttonPin);
-  if (reading != LastRead) {
-    LastTimeDebounce = millis();
-  }
+  int newButtonState = digitalRead(buttonPin);
+  if ( previousButtonState != newButtonState ) {
+    previousButtonState = newButtonState;
 
-  if ((millis() - LastTimeDebounce) > WaitDebounce) {
-    int reading = digitalRead(buttonPin);
-    if (reading != buttonState and reading == HIGH) {
+    if ( newButtonState == LOW && myChrono.hasPassed(50) ) {
+      Serial.println("******************");
+      Serial.print("ms ");
+      Serial.print( myChrono.elapsed() );
+      Serial.println();
       relayState = !relayState;
       digitalWrite(relayPin, relayState);
       Serial.print(F("Set: "));
       Serial.println(relayState);
+
     }
-    buttonState = reading;
+
+    myChrono.restart();
   }
-  LastRead = reading;
-  delay(10);
+
+
+  if (myChrono.hasPassed(200000)) {
+    Serial.println("******************");
+    Serial.print("ms ");
+    Serial.print( myChrono.elapsed() );
+    Serial.println();
+    connLost = false;
+    MQTT_connect();
+    myChrono.start();
+    // DO SOMETHING EVERY 200 MS.
+
+  }
 }
