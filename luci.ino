@@ -29,14 +29,14 @@ bool connLost = false;
 /************************* WiFi Access Point *********************************/
 
 #define WLAN_SSID       "you-ssid"
-#define WLAN_PASS       "you-password"
+#define WLAN_PASS       "you-psw"
 
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883                 // use 8883 for SSL, 1883 default
 #define AIO_USERNAME    "you-username"
-#define AIO_KEY         "you-key"
+#define AIO_KEY         "tou-aio-key"
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -144,26 +144,6 @@ void loop() {
         }
       }
 
-      //button
-      int newButtonState = digitalRead(buttonPin);
-      if ( previousButtonState != newButtonState ) {
-        previousButtonState = newButtonState;
-
-        if ( newButtonState == LOW && myChrono.hasPassed(50) ) {
-          Serial.println("******************");
-          Serial.print("ms ");
-          Serial.print( myChrono.elapsed() );
-          Serial.println();
-          relayState = !relayState;
-          digitalWrite(relayPin, relayState);
-          Serial.print(F("Set: "));
-          Serial.println(relayState);
-
-        }
-
-
-        myChrono.restart();
-      }
     }
   }
 
@@ -189,7 +169,7 @@ void loop() {
   }
 
 
-  if (myChrono.hasPassed(200000)) {
+  if (connLost == true && myChrono.hasPassed(200000)) {
     Serial.println("******************");
     Serial.print("ms ");
     Serial.print( myChrono.elapsed() );
