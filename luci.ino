@@ -21,22 +21,23 @@
 #include <Chrono.h>
 #define relayPin D0
 #define buttonPin D1
-int relayState = LOW;
+int relayState = HIGH;
 Chrono myChrono;
 int previousButtonState;
 int LastRead = LOW;
 bool connLost = false;
+int timeReconnected = 30; //use minuts
 /************************* WiFi Access Point *********************************/
 
-#define WLAN_SSID       "you-ssid"
-#define WLAN_PASS       "you-psw"
+#define WLAN_SSID       "your-ssid"
+#define WLAN_PASS       "your-password"
 
 /************************* Adafruit.io Setup *********************************/
 
 #define AIO_SERVER      "io.adafruit.com"
 #define AIO_SERVERPORT  1883                 // use 8883 for SSL, 1883 default
-#define AIO_USERNAME    "you-username"
-#define AIO_KEY         "tou-aio-key"
+#define AIO_USERNAME    "your-username"
+#define AIO_KEY         "your-aio-key"
 
 /************ Global State (you don't need to change this!) ******************/
 
@@ -71,6 +72,7 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   previousButtonState = digitalRead(buttonPin);
   digitalWrite(relayPin, relayState);
+  int timeReconnectedmillis = timeReconnected * 60 * 1000;
 
   Serial.println(F("Adafruit MQTT demo"));
 
@@ -122,7 +124,6 @@ bool MQTT_connect() {
   return true;
 }
 
-
 void loop() {
   // Verifico se non ho perso la connessione
   if (!connLost) {
@@ -146,8 +147,7 @@ void loop() {
 
     }
   }
-
-  //la connessione non è ok
+  
   //button
   int newButtonState = digitalRead(buttonPin);
   if ( previousButtonState != newButtonState ) {
@@ -162,14 +162,11 @@ void loop() {
       digitalWrite(relayPin, relayState);
       Serial.print(F("Set: "));
       Serial.println(relayState);
-
     }
-
     myChrono.restart();
   }
 
-
-  if (connLost == true && myChrono.hasPassed(200000)) {
+  if (connLost == true && myChrono.hasPassed(timeReconnected)) {
     Serial.println("******************");
     Serial.print("ms ");
     Serial.print( myChrono.elapsed() );
@@ -177,7 +174,5 @@ void loop() {
     connLost = false;
     MQTT_connect();
     myChrono.start();
-    // DO SOMETHING EVERY 200 MS.
-
   }
 }
